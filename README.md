@@ -1,7 +1,8 @@
 # Karten-Scanner (Pokémon)
 
 **Online:** <https://pokemon.3dfilips.lu> – funktioniert überall, ohne dass der Mac laufen muss.
-Jede Änderung, die auf GitHub (Branch `main`) hochgeladen wird, wird automatisch dort veröffentlicht.
+Läuft über Vercel (Einstellungen in `vercel.json`): Jede Änderung, die auf GitHub (Branch `main`)
+hochgeladen wird, veröffentlicht Vercel automatisch.
 Online gibt es den eBay-Such-Link (keine eBay-Preise in der App) und Scans werden nicht gespeichert –
 dafür die Version auf dem Mac verwenden (siehe unten).
 
