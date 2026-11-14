@@ -2,5 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "buildCommand": "rm -f public/build-index.html",
-  "outputDirectory": "public"
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/tcgdex-img/:path*", "destination": "https://assets.tcgdex.net/:path*" }
+  ]
 }

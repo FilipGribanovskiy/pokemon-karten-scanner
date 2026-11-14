@@ -3,6 +3,9 @@ const TCGDEX = "https://api.tcgdex.net/v2";
 // Läuft die App über server.py auf dem Mac? Nur dann gibt es eBay-Preise (/api/ebay) und das
 // Speichern von Scans (/api/scan). Online (pokemon.3dfilips.lu) ist sie eine reine Webseite.
 const ON_MAC = /^(localhost|127\.0\.0\.1|192\.168\.|10\.)|\.local$/.test(location.hostname);
+// Der Bilder-Server von TCGdex schickt manchmal "Access-Control-Allow-Origin: *, *", dann blockiert
+// der Browser das Laden per fetch. Online holt Vercel die Bilder deshalb selbst ab (vercel.json).
+const imageFetchUrl = (url) => (ON_MAC ? url : url.replace("https://assets.tcgdex.net/", "/tcgdex-img/"));
 
 const $ = (sel) => document.querySelector(sel);
 const els = {
@@ -708,7 +711,7 @@ async function rankByImage(card, list) {
       c.visual = -1;
       if (!c.image) return;
       try {
-        const blob = await fetch(`${c.image}/low.webp`).then((r) => r.blob());
+        const blob = await fetch(imageFetchUrl(`${c.image}/low.webp`)).then((r) => r.blob());
         const img = await loadImage(blob);
         c.visual = fpSimilarity(mine, fingerprint(img));
         URL.revokeObjectURL(img.src);
