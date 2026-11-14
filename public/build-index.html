@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bild-Datenbank bauen</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .bar { height: 14px; background: var(--panel-2); border-radius: 7px; overflow: hidden; margin: 14px 0 8px; }
+    .bar div { height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+    #log { color: var(--muted); font-size: 14px; white-space: pre-line; }
+  </style>
+</head>
+<body>
+  <header><h1>Bild-Datenbank bauen</h1></header>
+  <main>
+    <p class="note">Lädt die Bilder aller Pokémon-Karten und speichert von jeder einen kleinen Fingerabdruck.
+      Damit erkennt der Scanner Karten am Bild. Beim ersten Mal dauert das eine Weile (ca. 330 MB),
+      danach werden nur neue Karten nachgeladen. Lass diese Seite dabei offen und im Vordergrund.</p>
+    <button class="btn buy" id="start">Datenbank bauen / aktualisieren</button>
+    <div class="bar"><div id="bar"></div></div>
+    <div id="log"></div>
+  </main>
+  <script src="fingerprint.js?v=2"></script>
+  <script>
+    const TCGDEX = "https://api.tcgdex.net/v2";
+    const log = (t) => (document.querySelector("#log").textContent = t);
+
+    async function getJSON(url) {
+      for (let i = 0; i < 4; i++) {
+        try { const r = await fetch(url); if (r.ok) return r.json(); } catch {}
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+      throw new Error("Konnte nicht laden: " + url);
+    }
+
+    async function fingerprintOf(url) {
+      for (let i = 0; i < 3; i++) {
+        try {
+          const r = await fetch(url);
+          if (r.status === 404) return null;
+          if (!r.ok) throw new Error(r.status);
+          const bmp = await createImageBitmap(await r.blob());
+          const fp = fingerprint(bmp);
+          bmp.close();
+          return fpToInt8(fp);
+        } catch { await new Promise((r) => setTimeout(r, 1000)); }
+      }
+      return null;
+    }
+
+    async function build() {
+      document.querySelector("#start").disabled = true;
+      const t0 = Date.now();
+      log("Lade die Kartenliste (Deutsch, Englisch, Französisch) …");
+      const [de, en, fr] = await Promise.all(["de", "en", "fr"].map((l) => getJSON(`${TCGDEX}/${l}/cards`)));
+
+      // Jede Karte einmal: deutscher Name wenn vorhanden, Bild am liebsten aus der englischen Liste
+      const byId = new Map();
+      for (const list of [de, en, fr]) for (const c of list) {
+        const e = byId.get(c.id) || { id: c.id };
+        e.name = e.name || c.name;
+        byId.set(c.id, e);
+      }
+      for (const list of [en, fr, de]) for (const c of list) {
+        const e = byId.get(c.id);
+        if (!e.image && c.image) e.image = c.image;
+      }
+      const cards = [...byId.values()].filter((c) => c.image);
+
+      // Bereits vorhandene Fingerabdrücke wiederverwenden (nur neue Karten laden)
+      const old = new Map();
+      try {
+        const [meta, bin] = await Promise.all([
+          fetch("data/cards.json").then((r) => (r.ok ? r.json() : [])),
+          fetch("data/fingerprints.bin").then((r) => (r.ok ? r.arrayBuffer() : new ArrayBuffer(0))),
+        ]);
+        const all = new Int8Array(bin);
+        if (all.length === meta.length * FP_LEN) meta.forEach((m, i) => old.set(m[0], all.slice(i * FP_LEN, (i + 1) * FP_LEN)));
+      } catch {}
+
+      const result = new Array(cards.length);
+      let done = 0, failed = 0, next = 0;
+      async function worker() {
+        while (next < cards.length) {
+          const i = next++;
+          const c = cards[i];
+          result[i] = old.get(c.id) || await fingerprintOf(`${c.image}/low.webp`);
+          if (!result[i]) failed++;
+          done++;
+          if (done % 25 === 0 || done === cards.length) {
+            document.querySelector("#bar").style.width = `${(100 * done) / cards.length}%`;
+            const sek = (Date.now() - t0) / 1000;
+            log(`${done} von ${cards.length} Karten (${old.size ? "davon schon vorhanden: " + old.size + ", " : ""}Fehler: ${failed})\n` +
+              `noch ca. ${Math.round(((cards.length - done) * sek) / done / 60)} Minuten`);
+          }
+        }
+      }
+      await Promise.all(Array.from({ length: 16 }, worker));
+
+      // Speichern: Liste der Karten + alle Fingerabdrücke in einer Datei
+      const ok = cards.map((c, i) => [c, result[i]]).filter(([, fp]) => fp);
+      const bin = new Int8Array(ok.length * FP_LEN);
+      ok.forEach(([, fp], i) => bin.set(fp, i * FP_LEN));
+      const meta = ok.map(([c]) => [c.id, c.name, c.image]);
+      log("Speichere die Datenbank …");
+      await fetch("/api/index?file=fingerprints.bin", { method: "POST", body: bin });
+      await fetch("/api/index?file=cards.json", { method: "POST", body: JSON.stringify(meta) });
+      log(`Fertig! ${ok.length} Karten in der Datenbank (${failed} ohne Bild übersprungen), ` +
+        `Dauer: ${Math.round((Date.now() - t0) / 60000)} Minuten.`);
+      window.__buildDone = true;
+      document.querySelector("#start").disabled = false;
+    }
+
+    document.querySelector("#start").addEventListener("click", () =>
+      build().catch((e) => { log("Fehler: " + e.message); document.querySelector("#start").disabled = false; }));
+  </script>
+</body>
+</html>

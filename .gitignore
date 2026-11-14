@@ -1,0 +1,7 @@
+# Deine Scan-Fotos und eBay-Schlüssel bleiben nur auf dem Mac
+scans/
+config.json
+public/_test/
+.claude/
+__pycache__/
+.DS_Store

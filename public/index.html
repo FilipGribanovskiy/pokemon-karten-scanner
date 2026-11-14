@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1d1f27">
+  <title>Karten-Scanner</title>
+  <link rel="stylesheet" href="style.css?v=24">
+</head>
+<body>
+  <header>
+    <h1>Karten-Scanner</h1>
+    <div class="modes" role="tablist">
+      <button class="mode active" data-mode="value" role="tab">💰 Wert finden</button>
+      <button class="mode" data-mode="buy" role="tab">🛒 Kaufen</button>
+    </div>
+    <p class="mode-hint" id="modeHint"></p>
+  </header>
+
+  <main>
+    <section class="scan">
+      <label class="scan-btn">
+        <input type="file" id="photo" accept="image/*" capture="environment" hidden>
+        📷 Karte scannen
+      </label>
+      <p class="tip">Handy nah und gerade über die Karte halten, gutes Licht, Hülle ohne Spiegelung.</p>
+
+      <form id="searchForm" class="search">
+        <input id="searchInput" type="search" placeholder="oder eintippen: z.B. Glurak 4/102" autocomplete="off">
+        <button type="submit">Suchen</button>
+      </form>
+    </section>
+
+    <section id="cropper" class="cropper" hidden>
+      <h2>Karte einrahmen</h2>
+      <p class="note">Tippe auf die Karte, damit der Rahmen dorthin springt. Dann Größe und Drehung so einstellen, dass der Rahmen genau um die Karte liegt.</p>
+      <div id="cropStage" class="crop-stage">
+        <canvas id="cropCanvas"></canvas>
+        <div id="cropFrame" class="crop-frame"></div>
+      </div>
+      <label class="slider">Größe <input type="range" id="cropSize" min="8" max="100" value="80"></label>
+      <label class="slider">Drehen <input type="range" id="cropAngle" min="-45" max="45" value="0"></label>
+      <div class="crop-actions">
+        <button type="button" class="btn" id="cropRotate">↻ 90°</button>
+        <button type="button" class="btn buy" id="cropOk">Fertig, Karte lesen</button>
+      </div>
+    </section>
+
+    <section id="status" class="status" hidden></section>
+    <section id="preview" class="preview" hidden></section>
+    <section id="candidates" hidden></section>
+    <section id="result" hidden></section>
+  </main>
+
+  <footer>
+    Preise: Cardmarket über TCGdex, Angebote auf eBay. Angaben ohne Gewähr.
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+  <script src="fingerprint.js?v=24"></script>
+  <script src="detect.js?v=24"></script>
+  <script src="app.js?v=24"></script>
+</body>
+</html>
